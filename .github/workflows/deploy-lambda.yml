@@ -1,0 +1,37 @@
+name: Deploy AWS Lambda
+
+on:
+  push:
+    branches:
+      - deploy   # ✅ only deploy branch will trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # ✅ Required for OIDC authentication
+      contents: read    # ✅ Required to checkout code
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ✅ Configure AWS credentials using OIDC + Role ARN stored in GitHub Variables
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-2   # change if your Lambda is in another region
+
+      # ✅ Zip Lambda code
+      - name: Zip Lambda code
+        run: zip -j lambda_function_payload.zip lambda_function.py
+
+      # ✅ Deploy Lambda function
+      - name: Deploy Lambda Function
+        uses: aws-actions/aws-lambda-deploy@v1
+        with:
+          function-name: my-lambda-function
+          code-artifacts-dir: .
+          handler: lambda_function.lambda_handler
+          runtime: python3.12
